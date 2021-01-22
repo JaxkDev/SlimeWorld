@@ -1,0 +1,9 @@
+name: SlimeWorld
+version: 1.0.0
+author: JaxkDev
+website: https://github.com/JaxkDev/SlimeWorld
+
+extensions: [zstd]
+api: 3.17.0
+
+main: JaxkDev\SlimeWorld\Loader
