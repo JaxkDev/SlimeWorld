@@ -21,7 +21,6 @@ namespace JaxkDev\SlimeWorld;
 
 use AssertionError;
 use pocketmine\plugin\PluginBase;
-use pocketmine\utils\BinaryStream;
 
 class Loader extends PluginBase{
 
@@ -29,7 +28,7 @@ class Loader extends PluginBase{
 		$this->saveResource("world.slime", true);
 
 		$data = file_get_contents($this->getDataFolder()."world.slime");
-		$bs = new BinaryStream($data);
+		$bs = new SlimeBinaryStream($data);
 
 		/**
 		 * “Slime” file format
@@ -85,17 +84,7 @@ class Loader extends PluginBase{
 		 * 		<array of chunks> (size determined from bitmask)
   		 *		compressed using zstd
 		 */
-		$compressedChunksSize = $bs->getInt();
-		$uncompressedChunksSize = $bs->getInt();
-		//var_dump([$compressedChunksSize, $uncompressedChunksSize]);
-
-		$decompressedChunks = zstd_uncompress($bs->get($compressedChunksSize));
-		//var_dump($decompressedChunks);
-		//var_dump(strlen($decompressedChunks) === $uncompressedChunksSize);
-		if(strlen($decompressedChunks) !== $uncompressedChunksSize){
-			throw new AssertionError("Uncompressed chunks size '".strlen($decompressedChunks).
-				"' does not match expected '{$uncompressedChunksSize}'");
-		}
+		$chunks = $bs->readCompressed();
 
 		/**
 		 * 4 bytes (int) - compressed tile entities size
@@ -105,17 +94,7 @@ class Loader extends PluginBase{
 		 *		inside an nbt list named “tiles”, in global compound, no gzip anywhere
 		 *		compressed using zstd
 		 */
-		$compressedTileEntitiesSize = $bs->getInt();
-		$uncompressedTileEntitiesSize = $bs->getInt();
-		//var_dump([$compressedTileEntitiesSize, $uncompressedTileEntitiesSize]);
-
-		$decompressedTileEntities = zstd_uncompress($bs->get($compressedTileEntitiesSize));
-		//var_dump($decompressedTileEntities);
-		//var_dump(strlen($decompressedTileEntities) === $uncompressedTileEntitiesSize);
-		if(strlen($decompressedTileEntities) !== $uncompressedTileEntitiesSize){
-			throw new AssertionError("Uncompressed tile entities size '".strlen($decompressedTileEntities).
-				"' does not match expected '{$uncompressedTileEntitiesSize}'");
-		}
+		$tileEntities = $bs->readCompressed();
 
 		if($version >= 3){
 			/**
@@ -130,17 +109,7 @@ class Loader extends PluginBase{
 			 */
 			$hasEntities = $bs->getBool();
 			if($hasEntities){
-				$compressedEntitiesSize = $bs->getInt();
-				$uncompressedEntitiesSize = $bs->getInt();
-				//var_dump([$compressedEntitiesSize, $uncompressedEntitiesSize]);
-
-				$decompressedEntities = zstd_uncompress($bs->get($compressedEntitiesSize));
-				//var_dump($decompressedEntities);
-				//var_dump(strlen($decompressedEntities) === $uncompressedEntitiesSize);
-				if(strlen($decompressedEntities) !== $uncompressedEntitiesSize){
-					throw new AssertionError("Uncompressed entities size '".strlen($decompressedEntities).
-						"' does not match expected '{$uncompressedEntitiesSize}'");
-				}
+				$entities = $bs->readCompressed();
 			}
 
 			/**
@@ -149,17 +118,7 @@ class Loader extends PluginBase{
 			 * [depends] - compound tag compressed using zstd
 			 */
 			//What is this 'extra'... hmmm
-			$compressedExtraSize = $bs->getInt();
-			$uncompressedExtraSize = $bs->getInt();
-			//var_dump([$compressedExtraSize, $uncompressedExtraSize]);
-
-			$decompressedExtra = zstd_uncompress($bs->get($compressedExtraSize));
-			//var_dump($decompressedExtra);
-			//var_dump(strlen($decompressedExtra) === $uncompressedExtraSize);
-			if(strlen($decompressedExtra) !== $uncompressedExtraSize){
-				throw new AssertionError("Uncompressed Extra size '".strlen($decompressedExtra).
-					"' does not match expected '{$uncompressedExtraSize}'");
-			}
+			$extra = $bs->readCompressed();
 		}
 
 		if(!$bs->feof()){
