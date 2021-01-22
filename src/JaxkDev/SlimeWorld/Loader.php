@@ -26,9 +26,9 @@ use pocketmine\utils\BinaryStream;
 class Loader extends PluginBase{
 
 	public function onEnable(){
-		$this->saveResource("test.slime", true);
+		$this->saveResource("world.slime", true);
 
-		$data = file_get_contents($this->getDataFolder()."test.slime");
+		$data = file_get_contents($this->getDataFolder()."world.slime");
 		$bs = new BinaryStream($data);
 
 		/**
