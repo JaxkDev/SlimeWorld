@@ -19,6 +19,7 @@
 
 namespace JaxkDev\SlimeWorld;
 
+use pocketmine\level\format\io\LevelProviderManager;
 use pocketmine\plugin\PluginBase;
 
 class Loader extends PluginBase{
@@ -26,7 +27,6 @@ class Loader extends PluginBase{
 	public function onEnable(){
 		$this->saveResource("world.slime", true);
 
-		$world = SlimeWorld::fromFile($this->getDataFolder()."world.slime");
-		var_dump($world);
+		LevelProviderManager::addProvider(SlimeProvider::class);
 	}
 }

@@ -5,5 +5,6 @@ website: https://github.com/JaxkDev/SlimeWorld
 
 extensions: [zstd]
 api: 3.17.0
+load: STARTUP
 
 main: JaxkDev\SlimeWorld\Loader
