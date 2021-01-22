@@ -36,4 +36,11 @@ class SlimeBinaryStream extends BinaryStream{
 		}
 		return $decompressed;
 	}
+
+	public function writeCompressed(string $data): void{
+		$compressed = zstd_compress($data);
+		$this->putInt(strlen($compressed));
+		$this->putInt(strlen($data));
+		$this->put($compressed);
+	}
 }
