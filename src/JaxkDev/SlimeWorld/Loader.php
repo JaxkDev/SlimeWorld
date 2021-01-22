@@ -19,7 +19,6 @@
 
 namespace JaxkDev\SlimeWorld;
 
-use AssertionError;
 use pocketmine\plugin\PluginBase;
 
 class Loader extends PluginBase{
@@ -27,102 +26,7 @@ class Loader extends PluginBase{
 	public function onEnable(){
 		$this->saveResource("world.slime", true);
 
-		$data = file_get_contents($this->getDataFolder()."world.slime");
-		$bs = new SlimeBinaryStream($data);
-
-		/**
-		 * “Slime” file format
-		 * https://pastebin.com/raw/EVCNAmkw
-		 */
-
-		/**
-		 * 2 bytes - magic = 0xB10B
-		 */
-		$header = $bs->getShort();
-		if($header !== 0xB10B){
-			throw new AssertionError("Header invalid.");
-		}
-		//var_dump($header);
-
-		/**
-		 * 1 byte (ubyte) - version, current = 0x03
-		 */
-		$version = $bs->getByte();
-		if($version < 1 or $version > 3){
-			throw new AssertionError("Version '{$version}' not supported.");
-		}
-		//var_dump($version);
-
-		/**
-		 * 2 bytes (short) - xPos of chunk lowest x & lowest z
-		 * 2 bytes (short) - zPos
-		 * 2 bytes (ushort) - width
-		 * 2 bytes (ushort) - depth
-		 */
-		$minX = $bs->getShort();
-		$minZ = $bs->getShort();
-		$width = $bs->getShort();
-		$depth = $bs->getShort();
-		//var_dump([$minX, $minZ, $width, $depth]);
-
-		/**
-		 * [depends] - chunk bitmask
-		 * -> each chunk is 1 bit: 0 if all air (missing), 1 if present
-		 * -> chunks are ordered zx, meaning
-		 * -> the last byte has unused bits on the right
-		 * -> size is ceil((width*depth) / 8) bytes
-		 */
-		$chunkBitmaskLength = (int)ceil(($width*$depth)/8);
-		//var_dump($chunkBitmaskLength);
-		$chunkBitmask = $bs->get($chunkBitmaskLength);
-		//TODO ^
-		//var_dump($chunkBitmask);
-
-		/**
-		 * 4 bytes (int) - compressed chunks size
-		 * 4 bytes (int) - uncompressed chunks size
-		 * 		<array of chunks> (size determined from bitmask)
-  		 *		compressed using zstd
-		 */
-		$chunks = $bs->readCompressed();
-
-		/**
-		 * 4 bytes (int) - compressed tile entities size
-		 * 4 bytes (int) - uncompressed tile entities size
-		 *		<array of tile entity nbt compounds>
-		 *		same format as mc,
-		 *		inside an nbt list named “tiles”, in global compound, no gzip anywhere
-		 *		compressed using zstd
-		 */
-		$tileEntities = $bs->readCompressed();
-
-		if($version >= 3){
-			/**
-			 * 1 byte (boolean) - has entities
-			 * [if has entities]
-			 * 		4 bytes (int) compressed entities size
-			 * 		4 bytes (int) uncompressed entities size
-			 * 			<array of entity nbt compounds>
-			 * 			Same format as mc EXCEPT optional “CustomId”
-			 * 			in side an nbt list named “entities”, in global compound
-			 *			Compressed using zstd
-			 */
-			$hasEntities = $bs->getBool();
-			if($hasEntities){
-				$entities = $bs->readCompressed();
-			}
-
-			/**
-			 * 4 bytes (int) - compressed “extra” size
-			 * 4 bytes (int) - uncompressed “extra” size
-			 * [depends] - compound tag compressed using zstd
-			 */
-			//What is this 'extra'... hmmm
-			$extra = $bs->readCompressed();
-		}
-
-		if(!$bs->feof()){
-			throw new AssertionError("Data left unread...");
-		}
+		$world = SlimeWorld::fromFile($this->getDataFolder()."world.slime");
+		var_dump($world);
 	}
 }
