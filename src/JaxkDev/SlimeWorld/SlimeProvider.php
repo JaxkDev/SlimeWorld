@@ -33,7 +33,11 @@ use pocketmine\nbt\tag\StringTag;
 use UnexpectedValueException;
 
 class SlimeProvider extends BaseLevelProvider{
-	private ?SlimeFile $slimeFile;
+
+	private ?SlimeFile $slimeFile = null;
+
+	/** @var Array<int, Chunk> */
+	private array $chunks = [];
 
 	protected function loadLevelData() : void{
 		$compressedLevelData = @file_get_contents($this->getPath() . "level.slime");
@@ -55,16 +59,23 @@ class SlimeProvider extends BaseLevelProvider{
 			throw new LevelException("Invalid level.slime");
 		}
 
+		if(!in_array(($v = $levelData->getByte("SlimeVersion")), SlimeFile::FORMAT_VERSIONS)){
+			throw new LevelException("Slime v{$v} is not supported.");
+		}
 		$this->levelData = $levelData;
 
 		//Load slime file if it exists.
-		$this->slimeFile = file_exists($this->getPath()."levelData.slime") ?
-			SlimeFile::read($this->getPath()."levelData.slime") : null;
+		if(file_exists($this->getPath()."levelData.slime")){
+			$this->slimeFile = SlimeFile::read($this->getPath()."levelData.slime");
+			$chunks = $this->slimeFile->loadChunks();
+			//TODO manifest chunks based on coords hash.
+			//var_dump($chunks);
+		}
 	}
 
 	public function saveLevelData(){
 		$nbt = new BigEndianNBTStream();
-		$buffer = @zstd_compress($nbt->write($this->levelData));
+		$buffer = @zstd_compress($nbt->write($this->levelData)); //TODO Find balance with right compression level.
 		if($buffer === false){
 			throw new LevelException("Failed to compress level data.");
 		}
@@ -72,7 +83,11 @@ class SlimeProvider extends BaseLevelProvider{
 
 		//Save slime file.
 		if($this->slimeFile !== null){
+			$this->slimeFile->saveChunks(array_values($this->chunks));
 			$this->slimeFile->write($this->getPath()."levelData.slime");
+		} else {
+			//TODO, Below
+			var_dump("TODO Write pmmp chunks into slimeFile or generate new slimeFile with current chunks.");
 		}
 	}
 
@@ -80,17 +95,13 @@ class SlimeProvider extends BaseLevelProvider{
 	 * @inheritDoc
 	 */
 	protected function readChunk(int $chunkX, int $chunkZ): ?Chunk{
-		var_dump("Read chunk {$chunkX}:{$chunkZ}.");
-		// return $this->chunks[Level::chunkHash($chunkX, $chunkZ)];
-		return null;
+		return $this->chunks[Level::chunkHash($chunkX, $chunkZ)] ?? null;
 	}
 
 	// AKA saveChunk, so just updating the data in memory
 	// see $this->saveLevelData() for saving.
-	// Note, Generate new SlimeFile if null.
 	protected function writeChunk(Chunk $chunk): void{
-		var_dump("Write chunk ".$chunk->getX().":".$chunk->getZ().".");
-		// TODO: Implement writeChunk() method.
+		$this->chunks[Level::chunkHash($chunk->getX(), $chunk->getZ())] = $chunk;
 	}
 
 	/**
@@ -114,21 +125,19 @@ class SlimeProvider extends BaseLevelProvider{
 		$levelData = new CompoundTag("", [
 			//Some vanilla fields
 			new ByteTag("Difficulty", Level::getDifficultyFromString((string) ($options["difficulty"] ?? "normal"))),
-			new LongTag("LastPlayed", time()),
+			new LongTag("CreatedAt", time()),
 			new StringTag("LevelName", $name),
 			new LongTag("RandomSeed", $seed),
 			new IntTag("SpawnX", 0),
 			new IntTag("SpawnY", 32767),
 			new IntTag("SpawnZ", 0),
 			new LongTag("Time", 0),
-			new IntTag("rainTime", 0),
 
 			//Slime
 			new ByteTag("SlimeVersion", SlimeFile::FORMAT_CURRENT_VERSION),
 
 			//Additional PocketMine-MP fields
-			new CompoundTag("GameRules", []),
-			new ByteTag("hardcore", ($options["hardcore"] ?? false) === true ? 1 : 0),
+			new CompoundTag("GameRules", []), //Not currently used.
 			new StringTag("generatorName", GeneratorManager::getGeneratorName($generator)),
 			new StringTag("generatorOptions", $options["preset"] ?? "")
 		]);

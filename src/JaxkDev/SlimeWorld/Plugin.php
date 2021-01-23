@@ -19,13 +19,29 @@
 
 namespace JaxkDev\SlimeWorld;
 
+use pocketmine\entity\Entity;
+use pocketmine\entity\Zombie;
+use pocketmine\event\Listener;
+use pocketmine\event\player\PlayerJoinEvent;
 use pocketmine\level\format\io\LevelProviderManager;
+use pocketmine\math\Vector3;
 use pocketmine\plugin\PluginBase;
+use pocketmine\scheduler\ClosureTask;
 
-class Plugin extends PluginBase{
-	public function onLoad(){
-		//$this->saveResource("world.slime", true);
+class Plugin extends PluginBase implements Listener{
+	public function onEnable(){
+		$this->saveResource("world2.slime", true);
 		LevelProviderManager::addProvider(SlimeProvider::class);
-		//SlimeWorld::fromFile($this->getDataFolder()."world.slime");
+
+		$this->getScheduler()->scheduleDelayedTask(new ClosureTask(function(int $currentTick): void{
+			SlimeFile::read($this->getDataFolder()."anvilWorld.slime")->loadChunks();
+		}), 0);
+		//$this->getServer()->getPluginManager()->registerEvents($this, $this);
+	}
+
+	public function onPlayerJoin(PlayerJoinEvent $event): void{
+		$this->getServer()->getDefaultLevel()->loadChunk(0, 0);
+		$this->getServer()->getDefaultLevel()->addEntity(Entity::createEntity(Entity::ZOMBIE, $this->getServer()->getDefaultLevel(), Zombie::createBaseNBT(new Vector3(4, 66, 4))));
+
 	}
 }

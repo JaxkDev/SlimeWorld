@@ -64,7 +64,7 @@ class BitSet{
 	}
 
 	public function set(int $value, bool $state = true): void{
-		$part = floor($value/self::PART_SIZE);
+		$part = (int)floor($value/self::PART_SIZE);
 		$index = $value%self::PART_SIZE;
 		if(!array_key_exists($part, $this->bitset)){
 			$this->bitset[$part] = 0;
