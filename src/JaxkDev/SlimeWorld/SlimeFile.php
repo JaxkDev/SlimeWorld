@@ -20,6 +20,7 @@
 namespace JaxkDev\SlimeWorld;
 
 use AssertionError;
+use pocketmine\level\format\Chunk;
 use pocketmine\nbt\tag\CompoundTag;
 
 class SlimeFile{
@@ -55,7 +56,7 @@ class SlimeFile{
 		 * -> size is ceil((width*depth) / 8) bytes
 		 */
 		$chunkBitmaskLength = (int)(ceil(($width*$depth)/8));
-		$chunkBitmask = $bs->get($chunkBitmaskLength);
+		$chunkBitmask = BitSet::fromBitsetString($bs->get($chunkBitmaskLength));
 
 		/**
 		 * 4 bytes (int) - compressed chunks size
@@ -95,7 +96,7 @@ class SlimeFile{
 		$bs->putShort($this->minZ);
 		$bs->putShort($this->width);
 		$bs->putShort($this->depth);
-		$bs->put($this->chunkStates);
+		$bs->put($this->chunkStates->getBitsetString());
 		$bs->writeCompressed($this->rawChunks);
 		$bs->writeCompressedCompound($this->tileEntities);
 		$hasEntities = $this->entities !== null;
@@ -113,15 +114,13 @@ class SlimeFile{
 	public int $minX;
 	public int $depth;
 	public int $width;
-	// Bitmask
-	public $chunkStates;
-	// Raw data
-	public $rawChunks;
+	public BitSet $chunkStates;
+	public string $rawChunks;
 	public CompoundTag $tileEntities;
 	public ?CompoundTag $entities;
 
-	public function __construct(int $version, int $minX, int $minZ, int $width, int $depth, $chunkStates, $rawChunks,
-								CompoundTag $tileEntities, ?CompoundTag $entities = null){
+	public function __construct(int $version, int $minX, int $minZ, int $width, int $depth, BitSet $chunkStates,
+								string $rawChunks, CompoundTag $tileEntities, ?CompoundTag $entities = null){
 		$this->version = $version;
 		$this->minZ = $minZ;
 		$this->minX = $minX;
@@ -131,5 +130,45 @@ class SlimeFile{
 		$this->rawChunks = $rawChunks;
 		$this->tileEntities = $tileEntities;
 		$this->entities = $entities;
+	}
+
+	/**
+	 * @return Chunk[]
+	 */
+	public function loadChunks(): array{
+		$bs = new SlimeBinaryStream($this->rawChunks);
+		$chunks = [];
+		for($i = 0; $i < $this->chunkStates->roughLength(); $i++){
+			if($this->chunkStates->get($i) === false) continue;
+			$heightMap = [];
+			for($i2 = 0; $i2 < 256; $i2++){
+				$heightMap[] = $bs->getInt();
+			}
+			$biomes = $bs->get(256);
+			$bitmask = BitSet::fromBitsetString($bs->get(2));
+			for($i3 = 0; $i3 < $bitmask->roughLength(); $i3++){
+				if($bitmask->get($i3) === false) continue;
+
+				$blockLight = $bs->get(2048);
+				$blocks = $bs->get(4096);
+				$data = $bs->get(2048);
+				$skylight = $bs->get(2048);
+
+				//skip hypixel blocks if any.
+				$_hp = $bs->getShort();
+				$bs->get($_hp);
+				//TODO Subchunk here.
+			}
+			//TODO Create chunk here.
+		}
+		//TODO All chunks here.
+		return [];
+	}
+
+	/**
+	 * @param Chunk[] $chunks
+	 */
+	public function saveChunks(array $chunks): void{
+		//TODO Overwrite all chunk data with the given chunks.
 	}
 }
