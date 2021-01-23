@@ -77,7 +77,7 @@ class SlimeFile{
 			}
 
 			//What is this 'extra'... (For now ignore it.)
-			$bs->readCompressed();
+			$bs->readCompressedCompound();
 		}
 
 		if(!$bs->feof()){
@@ -103,7 +103,7 @@ class SlimeFile{
 		if($hasEntities){
 			$bs->writeCompressedCompound($this->entities);
 		}
-		$bs->writeCompressed(""); //'Extra' *shrug*
+		$bs->writeCompressedCompound(new CompoundTag()); //'Extra' *shrug*
 		file_put_contents($file, $bs->buffer);
 	}
 
