@@ -7,4 +7,4 @@ extensions: [zstd]
 api: 3.17.0
 load: STARTUP
 
-main: JaxkDev\SlimeWorld\Loader
+main: JaxkDev\SlimeWorld\Plugin
