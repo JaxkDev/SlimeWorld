@@ -24,6 +24,8 @@ use pocketmine\plugin\PluginBase;
 
 class Plugin extends PluginBase{
 	public function onLoad(){
+		//$this->saveResource("world.slime", true);
 		LevelProviderManager::addProvider(SlimeProvider::class);
+		//SlimeWorld::fromFile($this->getDataFolder()."world.slime");
 	}
 }

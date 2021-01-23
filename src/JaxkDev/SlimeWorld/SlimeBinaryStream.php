@@ -20,9 +20,22 @@
 namespace JaxkDev\SlimeWorld;
 
 use AssertionError;
+use pocketmine\nbt\BigEndianNBTStream;
+use pocketmine\nbt\tag\CompoundTag;
 use pocketmine\utils\BinaryStream;
 
 class SlimeBinaryStream extends BinaryStream{
+
+	public function readCompressedCompound(): CompoundTag{
+		$data = $this->readCompressed();
+		$stream = new BigEndianNBTStream();
+		$nbt = $stream->read($data, true);
+		if(!$nbt instanceof CompoundTag){
+			throw new AssertionError("Invalid NBT Data.");
+		}
+		return $nbt;
+	}
+
 	public function readCompressed(): string{
 		$compressedSize = $this->getInt();
 		$uncompressedSize = $this->getInt();

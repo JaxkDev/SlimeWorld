@@ -20,6 +20,7 @@
 namespace JaxkDev\SlimeWorld;
 
 use AssertionError;
+use pocketmine\nbt\tag\CompoundTag;
 
 class SlimeWorld{
 
@@ -89,7 +90,8 @@ class SlimeWorld{
 		 *		inside an nbt list named “tiles”, in global compound, no gzip anywhere
 		 *		compressed using zstd
 		 */
-		$tileEntities = $bs->readCompressed();
+		$tileEntities = $bs->readCompressedCompound();
+		//var_dump($tileEntities);
 
 		$entities = null;
 
@@ -104,9 +106,9 @@ class SlimeWorld{
 			 * 			in side an nbt list named “entities”, in global compound
 			 *			Compressed using zstd
 			 */
-			$hasEntities = $bs->getBool();
-			if($hasEntities){
-				$entities = $bs->readCompressed();
+			if($bs->getBool()){ //Bool hasEntities
+				$entities = $bs->readCompressedCompound();
+				//var_dump($entities);
 			}
 
 			/**
@@ -136,13 +138,11 @@ class SlimeWorld{
 	private $chunkStates;
 	// Raw data
 	private $chunks;
-	// NBT
-	private $tileEntities;
-	// NBT|null [V3+]
-	private $entities;
+	private CompoundTag $tileEntities;
+	private ?CompoundTag $entities;
 
 	public function __construct(int $version, int $minX, int $minZ, int $width, int $depth, $chunkStates, $chunks,
-								$tileEntities, $entities = null){
+								CompoundTag $tileEntities, ?CompoundTag $entities = null){
 		$this->version = $version;
 		$this->minZ = $minZ;
 		$this->minX = $minX;

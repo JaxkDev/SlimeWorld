@@ -1,0 +1,49 @@
+“Slime” file format - https://pastebin.com/raw/EVCNAmkw | https://hypixel.net/threads/dev-blog-5-storing-your-skyblock-island.2190753/
+2 bytes - magic = 0xB10B
+1 byte (ubyte) - version, current = 0x03
+2 bytes (short) - xPos of chunk lowest x & lowest z
+2 bytes (short) - zPos
+2 bytes (ushort) - width
+2 bytes (ushort) - depth
+[depends] - chunk bitmask
+  -> each chunk is 1 bit: 0 if all air (missing), 1 if present
+  -> chunks are ordered zx, meaning 
+  -> the last byte has unused bits on the right
+  -> size is ceil((width*depth) / 8) bytes
+
+4 bytes (int) - compressed chunks size
+4 bytes (int) - uncompressed chunks size
+  <array of chunks> (size determined from bitmask)
+  compressed using zstd
+
+4 bytes (int) - compressed tile entities size
+4 bytes (int) - uncompressed tile entities size
+  <array of tile entity nbt compounds>
+  same format as mc, 
+  inside an nbt list named “tiles”, in global compound, no gzip anywhere
+  compressed using zstd
+
+1 byte (boolean) - has entities
+[if has entities]
+  4 bytes (int) compressed entities size
+  4 bytes (int) uncompressed entities size
+    <array of entity nbt compounds>
+    Same format as mc EXCEPT optional “CustomId”
+    in side an nbt list named “entities”, in global compound
+    Compressed using zstd
+
+4 bytes (int) - compressed “extra” size
+4 bytes (int) - uncompressed “extra” size
+[depends] - compound tag compressed using zstd
+
+Custom chunk format
+256 ints - heightmap
+256 bytes - biomes
+2 bytes - sections bitmask (bottom to top)
+  2048 bytes - block light
+  4096 bytes - blocks
+  2048 bytes - data
+  2048 bytes - skylight
+  2 bytes (ushort) - HypixelBlocks3 size (0 if absent)
+  [depends] - HypixelBlocks3
+  For each section
