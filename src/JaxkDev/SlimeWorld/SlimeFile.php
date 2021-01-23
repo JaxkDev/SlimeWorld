@@ -22,43 +22,26 @@ namespace JaxkDev\SlimeWorld;
 use AssertionError;
 use pocketmine\nbt\tag\CompoundTag;
 
-class SlimeWorld{
+class SlimeFile{
 
 	const FORMAT_HEADER = 0xB10B;
 	const FORMAT_VERSIONS = [1,3]; //Not seen any v2's unsure if it was public if so i do not know the changes.
 	const FORMAT_CURRENT_VERSION = 3;
 
-	public static function fromFile(string $file): SlimeWorld{
+	public static function read(string $file): SlimeFile{
 		$data = file_get_contents($file);
 		$bs = new SlimeBinaryStream($data);
 
-		/**
-		 * “Slime” file format
-		 * https://pastebin.com/raw/EVCNAmkw
-		 */
-
-		/**
-		 * 2 bytes - magic = 0xB10B
-		 */
 		$header = $bs->getShort();
-		if($header !== SlimeWorld::FORMAT_HEADER){
+		if($header !== SlimeFile::FORMAT_HEADER){
 			throw new AssertionError("Header invalid.");
 		}
 
-		/**
-		 * 1 byte (ubyte) - version, current = 0x03
-		 */
 		$version = $bs->getByte();
-		if(!in_array($version, SlimeWorld::FORMAT_VERSIONS, true)){
+		if(!in_array($version, SlimeFile::FORMAT_VERSIONS, true)){
 			throw new AssertionError("Version '{$version}' not supported.");
 		}
 
-		/**
-		 * 2 bytes (short) - xPos of chunk lowest x & lowest z
-		 * 2 bytes (short) - zPos
-		 * 2 bytes (ushort) - width
-		 * 2 bytes (ushort) - depth
-		 */
 		$minX = $bs->getShort();
 		$minZ = $bs->getShort();
 		$width = $bs->getShort();
@@ -80,42 +63,19 @@ class SlimeWorld{
 		 * 		<array of chunks> (size determined from bitmask)
 		 *		compressed using zstd
 		 */
-		$chunks = $bs->readCompressed();
+		$rawChunks = $bs->readCompressed();
 
-		/**
-		 * 4 bytes (int) - compressed tile entities size
-		 * 4 bytes (int) - uncompressed tile entities size
-		 *		<array of tile entity nbt compounds>
-		 *		same format as mc,
-		 *		inside an nbt list named “tiles”, in global compound, no gzip anywhere
-		 *		compressed using zstd
-		 */
 		$tileEntities = $bs->readCompressedCompound();
 		//var_dump($tileEntities);
 
 		$entities = null;
 
 		if($version === 3){
-			/**
-			 * 1 byte (boolean) - has entities
-			 * [if has entities]
-			 * 		4 bytes (int) compressed entities size
-			 * 		4 bytes (int) uncompressed entities size
-			 * 			<array of entity nbt compounds>
-			 * 			Same format as mc EXCEPT optional “CustomId”
-			 * 			in side an nbt list named “entities”, in global compound
-			 *			Compressed using zstd
-			 */
 			if($bs->getBool()){ //Bool hasEntities
 				$entities = $bs->readCompressedCompound();
 				//var_dump($entities);
 			}
 
-			/**
-			 * 4 bytes (int) - compressed “extra” size
-			 * 4 bytes (int) - uncompressed “extra” size
-			 * [depends] - compound tag compressed using zstd
-			 */
 			//What is this 'extra'... (For now ignore it.)
 			$bs->readCompressed();
 		}
@@ -124,24 +84,43 @@ class SlimeWorld{
 			throw new AssertionError("No data is expected however there is still data left unread...");
 		}
 
-		return new SlimeWorld($version, $minX, $minZ, $width, $depth, $chunkBitmask, $chunks, $tileEntities, $entities);
+		return new SlimeFile($version, $minX, $minZ, $width, $depth, $chunkBitmask, $rawChunks, $tileEntities, $entities);
+	}
+
+	public function write(string $file): void{
+		$bs = new SlimeBinaryStream();
+		$bs->putShort(SlimeFile::FORMAT_HEADER);
+		$bs->putShort(SlimeFile::FORMAT_CURRENT_VERSION);
+		$bs->putShort($this->minX);
+		$bs->putShort($this->minZ);
+		$bs->putShort($this->width);
+		$bs->putShort($this->depth);
+		$bs->put($this->chunkStates);
+		$bs->writeCompressed($this->rawChunks);
+		$bs->writeCompressedCompound($this->tileEntities);
+		$hasEntities = $this->entities !== null;
+		$bs->putBool($hasEntities);
+		if($hasEntities){
+			$bs->writeCompressedCompound($this->entities);
+		}
+		$bs->writeCompressed(""); //'Extra' *shrug*
+		file_put_contents($file, $bs->buffer);
 	}
 
 
-
-	private int $version;
-	private int $minZ;
-	private int $minX;
-	private int $depth;
-	private int $width;
+	public int $version;
+	public int $minZ;
+	public int $minX;
+	public int $depth;
+	public int $width;
 	// Bitmask
-	private $chunkStates;
+	public $chunkStates;
 	// Raw data
-	private $chunks;
-	private CompoundTag $tileEntities;
-	private ?CompoundTag $entities;
+	public $rawChunks;
+	public CompoundTag $tileEntities;
+	public ?CompoundTag $entities;
 
-	public function __construct(int $version, int $minX, int $minZ, int $width, int $depth, $chunkStates, $chunks,
+	public function __construct(int $version, int $minX, int $minZ, int $width, int $depth, $chunkStates, $rawChunks,
 								CompoundTag $tileEntities, ?CompoundTag $entities = null){
 		$this->version = $version;
 		$this->minZ = $minZ;
@@ -149,7 +128,7 @@ class SlimeWorld{
 		$this->width = $width;
 		$this->depth = $depth;
 		$this->chunkStates = $chunkStates;
-		$this->chunks = $chunks;
+		$this->rawChunks = $rawChunks;
 		$this->tileEntities = $tileEntities;
 		$this->entities = $entities;
 	}

@@ -36,6 +36,12 @@ class SlimeBinaryStream extends BinaryStream{
 		return $nbt;
 	}
 
+	public function writeCompressedCompound(CompoundTag $tag): void{
+		$stream = new BigEndianNBTStream();
+		$stream->write($tag);
+		$this->writeCompressed($stream->buffer);
+	}
+
 	public function readCompressed(): string{
 		$compressedSize = $this->getInt();
 		$uncompressedSize = $this->getInt();

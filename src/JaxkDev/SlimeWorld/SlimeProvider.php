@@ -33,33 +33,33 @@ use pocketmine\nbt\tag\StringTag;
 use UnexpectedValueException;
 
 class SlimeProvider extends BaseLevelProvider{
-
-	const FORMAT_HEADER = 0xB10B;
-	const FORMAT_VERSIONS = [1,3]; //Not seen any v2's unsure if it was public if so i do not know the changes.
-	const FORMAT_CURRENT_VERSION = 3;
+	private ?SlimeFile $slimeFile;
 
 	protected function loadLevelData() : void{
-		$compressedLevelData = @file_get_contents($this->getPath() . "level.dat");
+		$compressedLevelData = @file_get_contents($this->getPath() . "level.slime");
 		if($compressedLevelData === false){
-			throw new LevelException("Failed to read level.dat (permission denied or doesn't exist)");
+			throw new LevelException("Failed to read level.slime (permission denied or doesn't exist)");
 		}
 		$rawLevelData = @zstd_uncompress($compressedLevelData);
 		if($rawLevelData === false){
-			throw new LevelException("Failed to decompress level.dat contents (probably corrupted)");
+			throw new LevelException("Failed to decompress level.slime contents (probably corrupted)");
 		}
 		$nbt = new BigEndianNBTStream();
 		try{
 			$levelData = $nbt->read($rawLevelData);
 		}catch(UnexpectedValueException $e){
-			throw new LevelException("Failed to decode level.dat (" . $e->getMessage() . ")", 0, $e);
+			throw new LevelException("Failed to decode level.slime (" . $e->getMessage() . ")", 0, $e);
 		}
 
 		if(!($levelData instanceof CompoundTag) or !$levelData->hasTag("SlimeVersion", ByteTag::class)){
-			throw new LevelException("Invalid level.dat");
+			throw new LevelException("Invalid level.slime");
 		}
 
 		$this->levelData = $levelData;
-		//Load slime file.
+
+		//Load slime file if it exists.
+		$this->slimeFile = file_exists($this->getPath()."levelData.slime") ?
+			SlimeFile::read($this->getPath()."levelData.slime") : null;
 	}
 
 	public function saveLevelData(){
@@ -68,8 +68,12 @@ class SlimeProvider extends BaseLevelProvider{
 		if($buffer === false){
 			throw new LevelException("Failed to compress level data.");
 		}
-		file_put_contents($this->getPath() . "level.dat", $buffer);
+		file_put_contents($this->getPath() . "level.slime", $buffer);
+
 		//Save slime file.
+		if($this->slimeFile !== null){
+			$this->slimeFile->write($this->getPath()."levelData.slime");
+		}
 	}
 
 	/**
@@ -81,7 +85,9 @@ class SlimeProvider extends BaseLevelProvider{
 		return null;
 	}
 
-	// AKA saveChunk, so just updating the memory of $this->chunks see $this->close() for saving.
+	// AKA saveChunk, so just updating the data in memory
+	// see $this->saveLevelData() for saving.
+	// Note, Generate new SlimeFile if null.
 	protected function writeChunk(Chunk $chunk): void{
 		var_dump("Write chunk ".$chunk->getX().":".$chunk->getZ().".");
 		// TODO: Implement writeChunk() method.
@@ -98,7 +104,7 @@ class SlimeProvider extends BaseLevelProvider{
 	 * @inheritDoc
 	 */
 	public static function isValid(string $path): bool{
-		return file_exists($path . "/level.dat");
+		return file_exists($path . "/level.slime");
 	}
 
 	/**
@@ -118,7 +124,7 @@ class SlimeProvider extends BaseLevelProvider{
 			new IntTag("rainTime", 0),
 
 			//Slime
-			new ByteTag("SlimeVersion", SlimeProvider::FORMAT_CURRENT_VERSION),
+			new ByteTag("SlimeVersion", SlimeFile::FORMAT_CURRENT_VERSION),
 
 			//Additional PocketMine-MP fields
 			new CompoundTag("GameRules", []),
@@ -130,12 +136,12 @@ class SlimeProvider extends BaseLevelProvider{
 		$nbt = new BigEndianNBTStream();
 		$buffer = @zstd_compress($nbt->write($levelData));
 		if($buffer === false){
-			throw new LevelException("Failed to compress generated level.dat");
+			throw new LevelException("Failed to compress generated level.slime");
 		}
 		if(!is_dir($path)){
 			@mkdir($path);
 		}
-		file_put_contents($path . "level.dat", $buffer);
+		file_put_contents($path . "level.slime", $buffer);
 	}
 
 	/**
@@ -169,9 +175,7 @@ class SlimeProvider extends BaseLevelProvider{
 	/**
 	 * @inheritDoc
 	 */
-	public function close(){
-		// TODO: Implement close() method.
-	}
+	public function close(){}
 
 	/**
 	 * @inheritDoc
