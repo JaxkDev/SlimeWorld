@@ -68,8 +68,9 @@ class SlimeProvider extends BaseLevelProvider{
 		if(file_exists($this->getPath()."levelData.slime")){
 			$this->slimeFile = SlimeFile::read($this->getPath()."levelData.slime");
 			$chunks = $this->slimeFile->loadChunks();
-			//TODO manifest chunks based on coords hash.
-			//var_dump($chunks);
+			foreach($chunks as $chunk){
+				$this->chunks[Level::chunkHash($chunk->getX(), $chunk->getZ())] = $chunk;
+			}
 		}
 	}
 

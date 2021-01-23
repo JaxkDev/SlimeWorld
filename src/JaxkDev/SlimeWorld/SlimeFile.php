@@ -90,6 +90,8 @@ class SlimeFile{
 	}
 
 	public function write(string $file): void{
+		var_dump("TODO");
+		return;
 		$bs = new SlimeBinaryStream();
 		$bs->putShort(SlimeFile::FORMAT_HEADER);
 		$bs->putShort(SlimeFile::FORMAT_CURRENT_VERSION);

@@ -30,12 +30,7 @@ use pocketmine\scheduler\ClosureTask;
 
 class Plugin extends PluginBase implements Listener{
 	public function onEnable(){
-		$this->saveResource("world2.slime", true);
 		LevelProviderManager::addProvider(SlimeProvider::class);
-
-		$this->getScheduler()->scheduleDelayedTask(new ClosureTask(function(int $currentTick): void{
-			var_dump(SlimeFile::read($this->getDataFolder()."anvilWorld.slime")->loadChunks()[0]);
-		}), 0);
 		//$this->getServer()->getPluginManager()->registerEvents($this, $this);
 	}
 
