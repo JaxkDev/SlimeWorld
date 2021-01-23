@@ -21,6 +21,7 @@ namespace JaxkDev\SlimeWorld;
 
 use AssertionError;
 use pocketmine\level\format\Chunk;
+use pocketmine\level\format\SubChunk;
 use pocketmine\nbt\tag\CompoundTag;
 
 class SlimeFile{
@@ -140,12 +141,18 @@ class SlimeFile{
 		$chunks = [];
 		for($i = 0; $i < $this->chunkStates->roughLength(); $i++){
 			if($this->chunkStates->get($i) === false) continue;
+
+			$chunkX = (($i % $this->width) + $this->minX);
+			$chunkZ = (int)floor(($i / $this->width) + $this->minZ);
+			//var_dump("Loading chunk {$chunkX}:{$chunkZ}");
+
 			$heightMap = [];
 			for($i2 = 0; $i2 < 256; $i2++){
 				$heightMap[] = $bs->getInt();
 			}
 			$biomes = $bs->get(256);
 			$bitmask = BitSet::fromBitsetString($bs->get(2));
+			$subchunks = [];
 			for($i3 = 0; $i3 < $bitmask->roughLength(); $i3++){
 				if($bitmask->get($i3) === false) continue;
 
@@ -157,12 +164,11 @@ class SlimeFile{
 				//skip hypixel blocks if any.
 				$_hp = $bs->getShort();
 				$bs->get($_hp);
-				//TODO Subchunk here.
+				$subchunks[] = new SubChunk($blocks, $data, $skylight, $blockLight);
 			}
-			//TODO Create chunk here.
+			$chunks[] = new Chunk($chunkX, $chunkZ, $subchunks, [], [], $biomes, $heightMap);
 		}
-		//TODO All chunks here.
-		return [];
+		return $chunks;
 	}
 
 	/**

@@ -34,7 +34,7 @@ class Plugin extends PluginBase implements Listener{
 		LevelProviderManager::addProvider(SlimeProvider::class);
 
 		$this->getScheduler()->scheduleDelayedTask(new ClosureTask(function(int $currentTick): void{
-			SlimeFile::read($this->getDataFolder()."anvilWorld.slime")->loadChunks();
+			var_dump(SlimeFile::read($this->getDataFolder()."anvilWorld.slime")->loadChunks()[0]);
 		}), 0);
 		//$this->getServer()->getPluginManager()->registerEvents($this, $this);
 	}

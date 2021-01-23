@@ -21,7 +21,7 @@ namespace JaxkDev\SlimeWorld;
 
 class BitSet{
 
-	const PART_SIZE = 8; //8 Bits in 0-255
+	const BYTE_SIZE = 8;
 	const BITMAP = [
 		0b1,
 		0b10,
@@ -64,8 +64,8 @@ class BitSet{
 	}
 
 	public function set(int $value, bool $state = true): void{
-		$part = (int)floor($value/self::PART_SIZE);
-		$index = $value%self::PART_SIZE;
+		$part = (int)floor($value/self::BYTE_SIZE);
+		$index = $value%self::BYTE_SIZE;
 		if(!array_key_exists($part, $this->bitset)){
 			$this->bitset[$part] = 0;
 		}
@@ -73,8 +73,8 @@ class BitSet{
 	}
 
 	public function get(int $value): bool{
-		$part = (int)floor($value/self::PART_SIZE);
-		$index = $value%self::PART_SIZE;
+		$part = (int)floor($value/self::BYTE_SIZE);
+		$index = $value%self::BYTE_SIZE;
 		if(!array_key_exists($part, $this->bitset)){
 			return false;
 		}
