@@ -83,9 +83,7 @@ class SlimeProvider extends BaseLevelProvider{
 		file_put_contents($this->getPath() . "level.slime", $buffer);
 
 		//Save slime file.
-		if($this->slimeFile !== null){
-			$this->slimeFile->setChunks(array_values($this->chunks));
-		} else {
+		if($this->slimeFile === null){
 			if(sizeof($this->chunks) > 0){
 				$this->slimeFile = SlimeFile::generateFromChunks(array_values($this->chunks));
 			}
@@ -99,15 +97,14 @@ class SlimeProvider extends BaseLevelProvider{
 	 * @inheritDoc
 	 */
 	protected function readChunk(int $chunkX, int $chunkZ): ?Chunk{
-		//var_dump("Requested chunk ".$chunkX.":".$chunkZ);
 		return $this->chunks[Level::chunkHash($chunkX, $chunkZ)] ?? null;
 	}
 
 	// AKA saveChunk, so just updating the data in memory
 	// see $this->saveLevelData() for saving.
 	protected function writeChunk(Chunk $chunk): void{
-		//var_dump("Added chunk ".$chunk->getX().":".$chunk->getZ());
 		$this->chunks[Level::chunkHash($chunk->getX(), $chunk->getZ())] = $chunk;
+		$this->slimeFile->setChunks(array_values($this->chunks)); //Bloody tiles...
 	}
 
 	/**

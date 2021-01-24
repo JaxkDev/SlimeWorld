@@ -22,7 +22,11 @@ namespace JaxkDev\SlimeWorld;
 use AssertionError;
 use pocketmine\level\format\Chunk;
 use pocketmine\level\format\SubChunk;
+use pocketmine\level\Level;
+use pocketmine\level\LevelException;
 use pocketmine\nbt\tag\CompoundTag;
+use pocketmine\nbt\tag\IntTag;
+use pocketmine\nbt\tag\ListTag;
 
 class SlimeFile{
 
@@ -76,14 +80,39 @@ class SlimeFile{
 
 		$tileEntities = $bs->readCompressedCompound();
 
-		$entities = null;
+		/** @var Array<int, CompoundTag[]> $tileMap */
+		$tileMap = [];
+		if($tileEntities->hasTag("tiles", ListTag::class)){
+			/** @var CompoundTag $tag */
+			foreach($tileEntities->getListTag("tiles")->getValue() as $tag){
+				if(!$tag instanceof CompoundTag) throw new LevelException("Invalid tiles nbt");
+				/** @var IntTag|null $x */
+				$x = $tag->getTagValue("x", IntTag::class);
+				/** @var IntTag|null $z */
+				$z = $tag->getTagValue("z", IntTag::class);
+				if($z === null or $x === null) throw new LevelException("Tile does not have x/z int tag.");
+				$tileMap[Level::chunkHash($x >> 4, $z >> 4)][] = $tag;
+			}
+		}
+
+		/** @var Array<int, CompoundTag[]> $entityMap */
+		$entityMap = [];
 
 		if($version === 3){
 			if($bs->getBool()){ //Bool hasEntities
 				$entities = $bs->readCompressedCompound();
+				if($entities->hasTag("entities", ListTag::class)){
+					/** @var CompoundTag $tag */
+					foreach($entities->getListTag("entities")->getValue() as $tag){
+						if(!$tag instanceof CompoundTag) throw new LevelException("Invalid entities nbt");
+						$pos = $tag->getTagValue("Pos", ListTag::class);
+						if($pos === null) throw new LevelException("Entity does not have Pos list tag.");
+						$entityMap[Level::chunkHash($pos[0]->getValue() >> 4, $pos[2]->getValue() >> 4)][] = $tag;
+					}
+				}
 			}
 
-			//What is this 'extra'... (For now ignore it.)
+			//No extra block data.
 			$bs->readCompressedCompound();
 		}
 
@@ -100,8 +129,8 @@ class SlimeFile{
 		$sf->depth = $depth;
 		$sf->chunkStates = $chunkBitmask;
 		$sf->rawChunks = $rawChunks;
-		$sf->tileEntities = $tileEntities;
-		$sf->entities = $entities;
+		$sf->tileMap = $tileMap;
+		$sf->entityMap = $entityMap;
 		return $sf;
 	}
 
@@ -115,13 +144,29 @@ class SlimeFile{
 		$bs->putShort($this->depth);
 		$bs->put($this->chunkStates->getBitset());
 		$bs->writeCompressed($this->rawChunks);
-		$bs->writeCompressedCompound($this->tileEntities);
-		$hasEntities = $this->entities !== null;
+		$nbt = new CompoundTag();
+		$list = new ListTag("tiles");
+		foreach(array_values($this->tileMap) as $tileTags){
+			foreach($tileTags as $tag){
+				$list->push($tag);
+			}
+		}
+		$nbt->setTag($list);
+		$bs->writeCompressedCompound($nbt);
+		$hasEntities = true;
 		$bs->putBool($hasEntities);
 		if($hasEntities){
-			$bs->writeCompressedCompound($this->entities);
+			$nbt = new CompoundTag();
+			$list = new ListTag("entities");
+			foreach(array_values($this->entityMap) as $entityTags){
+				foreach($entityTags as $tag){
+					$list->push($tag);
+				}
+			}
+			$nbt->setTag($list);
+			$bs->writeCompressedCompound($nbt);
 		}
-		$bs->writeCompressedCompound(new CompoundTag()); //'Extra' *shrug*
+		$bs->writeCompressedCompound(new CompoundTag()); //No extra block data.
 		return $bs->buffer;
 	}
 
@@ -133,8 +178,10 @@ class SlimeFile{
 	private int $width;
 	private BitSet $chunkStates;
 	private string $rawChunks;
-	private CompoundTag $tileEntities;
-	private ?CompoundTag $entities;
+	/** @var Array<int, CompoundTag[]>  */
+	private array $tileMap;
+	/** @var Array<int, CompoundTag[]>  */
+	private array $entityMap;
 
 	private function __construct(int $version = self::FORMAT_CURRENT_VERSION){
 		$this->version = $version;
@@ -172,9 +219,10 @@ class SlimeFile{
 				$bs->get($_hp);
 				$subchunks[] = new SubChunk($blocks, $data, $skylight, $blockLight);
 			}
-			//TODO Insert entities/tiles into arrays shown here:
-			$chunk = new Chunk($chunkX, $chunkZ, $subchunks, [], [], $biomes, $heightMap);
+			$chunk = new Chunk($chunkX, $chunkZ, $subchunks, $this->entityMap[Level::chunkHash($chunkX, $chunkZ)] ?? [],
+				$this->tileMap[Level::chunkHash($chunkX, $chunkZ)] ?? [], $biomes, $heightMap);
 			$chunk->setGenerated();
+			$chunk->setPopulated();
 			$chunks[] = $chunk;
 		}
 		return $chunks;
@@ -230,10 +278,17 @@ class SlimeFile{
 				//if(strlen($subChunk->getBlockSkyLightArray()) !== 2048) throw new ChunkException("Invalid block skylight");
 				$bs->putShort(0); //Hypixel blocks
 			}
+			$chunkHash = Level::chunkHash($chunk->getX(), $chunk->getZ());
+			$this->entityMap[$chunkHash] = [];
+			foreach($chunk->getSavableEntities() as $entity){
+				$entity->saveNBT();
+				$this->entityMap[$chunkHash][] = $entity->namedtag;
+			}
+			$this->tileMap[$chunkHash] = [];
+			foreach($chunk->getTiles() as $tile){
+				$this->tileMap[$chunkHash][] = $tile->saveNBT();
+			}
 		}
-		//TODO Entities
-		$this->tileEntities = new CompoundTag();
-		$this->entities = null; //new CompoundTag();
 		$this->rawChunks = $bs->getBuffer();
 	}
 
@@ -256,6 +311,5 @@ class SlimeFile{
 		/*if((($this->width*$this->depth)/8) > 10000){
 			throw new LevelException("Slime has not been tested to this extreme amount of chunks (".(($this->width*$this->depth)/8).") (empty or not).");
 		}*/
-		//var_dump([$this->minX, $this->maxX, $this->minZ, $this->maxZ, $this->width, $this->depth]);
 	}
 }
