@@ -2,6 +2,9 @@
 A bad implementation of Hypixels slime format, 
 this should not be used in production simply a test of the slime format documented in a hypixel dev post.
 
+Several issues with current implementation, this was done in a day or two worth of work dont expect it to work perfectly...
+
+
 # Pro's:
 - Uses zstd compression meaning loading and saving is much faster and efficient than zlib
   - 81 Chunks (initial terrain generated) only takes ~30KB
