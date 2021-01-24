@@ -66,8 +66,8 @@ class SlimeProvider extends BaseLevelProvider{
 
 		//Load slime file if it exists.
 		if(file_exists($this->getPath()."levelData.slime")){
-			$this->slimeFile = SlimeFile::read($this->getPath()."levelData.slime");
-			$chunks = $this->slimeFile->loadChunks();
+			$this->slimeFile = SlimeFile::read(file_get_contents($this->getPath()."levelData.slime"));
+			$chunks = $this->slimeFile->getChunks();
 			foreach($chunks as $chunk){
 				$this->chunks[Level::chunkHash($chunk->getX(), $chunk->getZ())] = $chunk;
 			}
@@ -84,11 +84,14 @@ class SlimeProvider extends BaseLevelProvider{
 
 		//Save slime file.
 		if($this->slimeFile !== null){
-			$this->slimeFile->saveChunks(array_values($this->chunks));
-			$this->slimeFile->write($this->getPath()."levelData.slime");
+			$this->slimeFile->setChunks(array_values($this->chunks));
 		} else {
-			//TODO, Below
-			var_dump("TODO Write pmmp chunks into slimeFile or generate new slimeFile with current chunks.");
+			if(sizeof($this->chunks) > 0){
+				$this->slimeFile = SlimeFile::generateFromChunks(array_values($this->chunks));
+			}
+		}
+		if($this->slimeFile !== null){
+			file_put_contents($this->getPath()."levelData.slime", $this->slimeFile->write());
 		}
 	}
 
@@ -96,12 +99,14 @@ class SlimeProvider extends BaseLevelProvider{
 	 * @inheritDoc
 	 */
 	protected function readChunk(int $chunkX, int $chunkZ): ?Chunk{
+		//var_dump("Requested chunk ".$chunkX.":".$chunkZ);
 		return $this->chunks[Level::chunkHash($chunkX, $chunkZ)] ?? null;
 	}
 
 	// AKA saveChunk, so just updating the data in memory
 	// see $this->saveLevelData() for saving.
 	protected function writeChunk(Chunk $chunk): void{
+		//var_dump("Added chunk ".$chunk->getX().":".$chunk->getZ());
 		$this->chunks[Level::chunkHash($chunk->getX(), $chunk->getZ())] = $chunk;
 	}
 

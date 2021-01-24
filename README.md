@@ -3,10 +3,12 @@ A bad implementation of Hypixels slime format,
 this should not be used in production simply a test of the slime format documented in a hypixel dev post.
 
 # Pro's:
-- Uses zstd compression meaning loading and saving is much faster and efficient than zlib [TODO, Comparisons]
+- Uses zstd compression meaning loading and saving is much faster and efficient than zlib
+  - 81 Chunks (initial terrain generated) only takes ~30KB
 - Some NBT has been removed in accordance with the [Slime Format](https://pastebin.com/raw/EVCNAmkw) meaning less data is wasted with naming fields that we already know are in that position.
 
 # Con's:
+- Cannot store large wolds (Due to single file format and memory limitations)
 - Experimental format.
 - Was implemented by Jaxk
 - Other world formats must be manually converted with external tools (for now)

@@ -33,56 +33,48 @@ class BitSet{
 		0b10000000
 	];
 
-	/** @var int[] */
-	private array $bitset;
+	private string $bitset;
 
-	/**
-	 * BitSet constructor.
-	 * @param int[] $bitset eg [255,255,232,123] (0-255)
-	 */
-	public function __construct(array $bitset){
+	private function __construct(string $bitset){
 		$this->bitset = $bitset;
 	}
 
-	/**
-	 * @return int[]
-	 */
-	public function getBitset(): array{
+	public function getBitset(): string{
 		return $this->bitset;
 	}
 
-	public function getBitsetString(): string{
-		return implode("", array_map(function($v){
-			return chr($v);
-		}, $this->bitset));
+	public static function fromString(string $bitset): BitSet{
+		return new BitSet($bitset);
 	}
 
-	public static function fromBitsetString(string $bitset): BitSet{
-		return new BitSet(array_map(function($v){
-			return ord($v);
-		}, str_split($bitset)));
+	public static function fromRoughSize(int $size): BitSet{
+		return new BitSet(str_repeat(chr(0), $size));
+	}
+
+	public static function fromSetSize(int $size): BitSet{
+		return self::fromRoughSize((int)ceil($size/8));
 	}
 
 	public function set(int $value, bool $state = true): void{
-		$part = (int)floor($value/self::BYTE_SIZE);
-		$index = $value%self::BYTE_SIZE;
-		if(!array_key_exists($part, $this->bitset)){
-			$this->bitset[$part] = 0;
+		$index = (int)floor($value/self::BYTE_SIZE);
+		$bit = self::BITMAP[$value%self::BYTE_SIZE];
+		if(($diff = ($index-(strlen($this->bitset)-1))) > 0){
+			$this->bitset .= str_repeat(chr(0), $diff);
 		}
-		$this->bitset[$part] = $state ? ($this->bitset[$part] | self::BITMAP[$index]) : ($this->bitset[$part] & ~self::BITMAP[$index]);
+		$this->bitset[$index] = $state ? chr(ord($this->bitset[$index]) | $bit) : chr(ord($this->bitset[$index]) & ~$bit);
 	}
 
 	public function get(int $value): bool{
-		$part = (int)floor($value/self::BYTE_SIZE);
-		$index = $value%self::BYTE_SIZE;
-		if(!array_key_exists($part, $this->bitset)){
+		$index = (int)floor($value/self::BYTE_SIZE);
+		$bit = self::BITMAP[$value%self::BYTE_SIZE];
+		if(strlen($this->bitset)-1 < $index){
 			return false;
 		}
-		return (($this->bitset[$part] & self::BITMAP[$index]) > 0);
+		return ((ord($this->bitset[$index]) & $bit) > 0);
 
 	}
 
 	public function roughLength(): int{
-		return sizeof($this->bitset)*8;
+		return strlen($this->bitset)*8;
 	}
 }

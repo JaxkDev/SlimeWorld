@@ -26,7 +26,6 @@ use pocketmine\event\player\PlayerJoinEvent;
 use pocketmine\level\format\io\LevelProviderManager;
 use pocketmine\math\Vector3;
 use pocketmine\plugin\PluginBase;
-use pocketmine\scheduler\ClosureTask;
 
 class Plugin extends PluginBase implements Listener{
 	public function onEnable(){

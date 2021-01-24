@@ -45,7 +45,7 @@ class SlimeBinaryStream extends BinaryStream{
 	public function readCompressed(): string{
 		$compressedSize = $this->getInt();
 		$uncompressedSize = $this->getInt();
-		$decompressed = zstd_uncompress($this->get($compressedSize));
+		$decompressed = @zstd_uncompress($this->get($compressedSize));
 		if($decompressed === false){
 			throw new AssertionError("Failed to decompress data.");
 		}
@@ -57,7 +57,7 @@ class SlimeBinaryStream extends BinaryStream{
 	}
 
 	public function writeCompressed(string $data): void{
-		$compressed = zstd_compress($data);
+		$compressed = @zstd_compress($data, 5);
 		$this->putInt(strlen($compressed));
 		$this->putInt(strlen($data));
 		$this->put($compressed);
